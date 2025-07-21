@@ -8,12 +8,12 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        findViewById<StateView>(R.id.stats).data = listOf(
+        val view = findViewById<StateView>(R.id.stats)
+        view.data = listOf(
             500F,
             500F,
             500F,
             500F,
         )
     }
-
 }

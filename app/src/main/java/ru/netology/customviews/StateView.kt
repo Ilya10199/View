@@ -1,5 +1,6 @@
 package ru.netology.customviews
 
+import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
@@ -7,6 +8,7 @@ import android.graphics.PointF
 import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.View
+import android.view.animation.LinearInterpolator
 import androidx.core.content.withStyledAttributes
 import kotlin.math.min
 import kotlin.random.Random
@@ -21,7 +23,7 @@ class StateView @JvmOverloads constructor(
     var data: List<Float> = emptyList()
         set(value) {
             field = value
-            invalidate()
+            update()
         }
 
     private var radius = 0F
@@ -31,9 +33,14 @@ class StateView @JvmOverloads constructor(
     private var lineWidth = AndroidUtils.dp(context, 15F).toFloat()
     private var fontSize = AndroidUtils.dp(context, 40F).toFloat()
     private var colors = emptyList<Int>()
+
     private val partsCount = 4F
     private var sumOfElement = 0F
     private var hundredPercentSum = 0F
+
+    private var progress = 0F
+    private var valueAnimator : ValueAnimator? = null
+    private var endValue = 1F
 
     init {
         context.withStyledAttributes(attrs, R.styleable.StateView) {
@@ -76,18 +83,6 @@ class StateView @JvmOverloads constructor(
         if (data.isEmpty()) {
             return
         }
-        hundredPercentSum = data[0] * partsCount
-        sumOfElement = data.sum()
-
-        var startFrom = -90F
-        for ((index, datum) in data.withIndex()) {
-            val angle = 360F * getPercent(hundredPercentSum, datum)/100
-            strokePaint.color = colors.getOrNull(index) ?: getRandomColor()
-            canvas.drawArc(oval, startFrom, angle, false, strokePaint)
-            startFrom += angle
-
-        }
-
 
         canvas.drawText(
             "%.2f%%".format(getPercent(hundredPercentSum, sumOfElement)),
@@ -96,12 +91,47 @@ class StateView @JvmOverloads constructor(
             textPaint
         )
 
+        hundredPercentSum = data[0] * partsCount
+        sumOfElement = data.sum()
+
+        var startAngle = -90F
+        val rotationAngle = progress * 360
+        for ((index, datum) in data.withIndex()) {
+            val percent = getPercent(hundredPercentSum, datum)/100
+            val angle = 360F * percent
+            strokePaint.color = colors.getOrNull(index) ?: getRandomColor()
+            canvas.drawArc(oval, startAngle + rotationAngle, angle * progress, false, strokePaint)
+            startAngle += angle
+        }
         strokePaint.color = colors[0]
 
-        canvas.drawPoint(center.x, center.y - radius, strokePaint)
+        canvas.drawArc(oval, -90F + rotationAngle, 1F, false, strokePaint)
+
+
 
     }
-
     private fun getRandomColor() = Random.nextInt(0xFF000000.toInt(), 0xFFFFFFFF.toInt())
+
     private fun getPercent(sumOfElement : Float, element: Float): Float = element * 100 / sumOfElement
+
+    private fun update() {
+        valueAnimator?.let {
+            it.removeAllListeners()
+            it.cancel()
+        }
+        progress = 0F
+
+        valueAnimator = ValueAnimator.ofFloat(progress, endValue).apply {
+            addUpdateListener { anim ->
+                progress = anim.animatedValue as Float
+                invalidate()
+            }
+            startDelay = 500
+            duration = 3_000
+            interpolator = LinearInterpolator()
+        }.also {
+            it.start()
+        }
+    }
+
 }
